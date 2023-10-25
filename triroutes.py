@@ -10,6 +10,8 @@ ways = {}
 seen = set()
 keepTags = ['highway', 'lanes', 'maxspeed', 'name', 'oneway', 'ref', 'surface']
 
+tilesize = 5.0
+
 startlat = 24.164785
 startlong = -127.826991
 endlat = 49.726580
@@ -17,13 +19,12 @@ endlong = -65.641307
 # endlat = 37.726580
 # endlong = -115.641307
 
-tilesize = 5.0
-
 lastlat = startlat
 lastlong = startlong
 currlat = startlat
 currlong = startlong
 numTiles = 0
+numFiles = 0
 
 while currlat < endlat:
     currlat = currlat + tilesize if currlat + tilesize < endlat else endlat
@@ -85,22 +86,16 @@ while currlat < endlat:
             wayData = {'id': length.id, 'length_mi': length_miles, 'time_s': time_seconds, 'tags': tags, 'startNode': startNode, 'endNode': endNode}
             ways[length.id] = wayData
 
-        # remove duplicate ways
-        # print('\nRemoving duplicate ways\n')
-        # newWays = set()
-        # for w in ways:
-        #     if w in newWays:
-        #         continue
-        #     newWays.add(w)
-        # ways = {i: ways[i] for i in newWays}
-
         lastlong = currlong
         numTiles += 1
+    
+    # dump all transformed road structures into massive json file for future use
+    # no excessive querying here
+    print(f'\nWriting file: road_tiles_{numFiles}_{0}.json')
+    ways_json = json.dumps(ways, indent=4)
+    with open(f'road_tiles_{numFiles}_{0}.json', 'w') as file:
+        file.write(ways_json)
+    
+    numFiles += 1
 
     lastlat = currlat
-
-# dump all transformed road structures into massive json file for future use
-# no excessive querying here
-ways_json = json.dumps(ways, indent=4)
-with open("highway_network.json", "w") as file:
-    file.write(ways_json)
