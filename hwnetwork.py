@@ -13,6 +13,12 @@ class highways():
                 temp = json.load(file)
                 self.ways.update(temp)
     
+    def getEndWays(self, slat, slon, elat, elon):
+        route = {'start': {'lat': slat, 'lon': slon}, 'end': {'lat': elat, 'lon': elon}}
+        route['startWay'] = self.findClosestWay(slat, slon, 'start')
+        route['endWay'] = self.findClosestWay(elat, elon, 'end')
+        return route
+    
     def findClosestWay(self, lat, lon, dir = 'start'):
         minDist = inf
         w = None
