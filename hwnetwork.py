@@ -15,7 +15,7 @@ class highways():
     
     def getEndWays(self, slat, slon, elat, elon):
         route = {'start': {'lat': slat, 'lon': slon}, 'end': {'lat': elat, 'lon': elon}}
-        route['startWay'] = self.findClosestWay(slat, slon, 'start')
+        route['startWay'] = self.findClosestStart(slat, slon, elat, elon)
         route['endWay'] = self.findClosestWay(elat, elon, 'end')
         return route
     
@@ -34,6 +34,34 @@ class highways():
                 w = way
 
         return w
+    
+    def findClosestStart(self, lat, lon, elat, elon):
+        minDist = inf
+        w = None
+        for way in self.ways.values():
+            snode = way['startNode']
+            snlat = snode['lat']
+            snlon = snode['long']
+
+            enode = way['endNode']
+            enlat = enode['lat']
+            enlon = enode['long']
+
+            dist1 = self.getDistance(lat, lon, snlat, snlon)
+            dist2 = self.getDistance(lat, lon, enlat, enlon)
+            snDist = self.getDistance(elat, elon, snlat, snlon)
+            enDist = self.getDistance(elat, elon, enlat, enlon)
+
+            if dist1 < minDist and enDist < snDist:
+                minDist = dist1
+                w = way
+            if dist2 < minDist and snDist < enDist and not self.isOneWay(way):
+                way['startNode'], way['endNode'] = way['endNode'], way['startNode']
+                minDist = dist2
+                w = way
+
+        return w
+
 
     def getDistance(self, lat1, lon1, lat2, lon2):
         lon1 = radians(lon1)
@@ -47,6 +75,13 @@ class highways():
         a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
 
         return 3956 * 2 * asin(sqrt(a))
+    
+    def isOneWay(self, way):
+        if 'oneway' not in way['tags']:
+            return False
+        elif way['tags']['oneway'] == 'no':
+            return False
+        return True
 
 def main():
     hw = highways()
