@@ -1,6 +1,7 @@
 #!/opt/homebrew/bin/python3
 
-from hwnetwork import highways
+from src.hwnetwork import network
+from src.quadtree import getDistance
 import heapq
 import copy
 
@@ -15,16 +16,16 @@ class HighwayRouter():
     def route(self, slat, slon, elat, elon):
 
         # get the start and end ways for this particular routing
-        init = self.hw.getEndWays(slat, slon, elat, elon)
+        init = self.hw.tree.getEndWays([slat, slon], [elat, elon])
 
         # get the route from the actual A* algorithm
-        route = self.routeAstar(init['startWay'], init['endWay'], elat, elon)
+        route = self.routeAstar(init['start'], init['end'], elat, elon)
         if not route:
             return None
         
         # add start and end way information to the returned route
-        route['start'] = init['start']
-        route['end'] = init['end']
+        route['start'] = {'lat': slat, 'lon': slon}
+        route['end'] = {'lat': elat, 'lon': elon}
         return route
     
 
@@ -36,18 +37,18 @@ class HighwayRouter():
 
         # start off with a route only containing the starting way and add it to our priority queue
         route = {'length_m': 0, 'time_s': 0, 'path': [start]}
-        tempNode = start['startNode']
-        pq = [(self.hw.getDistance(tempNode['lat'], tempNode['long'], elat, elon), route)]
+        tempNode = start.start
+        pq = [(getDistance([tempNode.lat, tempNode.lon], [elat, elon]), route)]
 
         # main loop of A*, keep popping from the priority queue until we reach the destination way or run out of paths
         while (pq):
 
             # pop the best route available from the priority queue
             heuristic, route = heapq.heappop(pq)
-            lastWayID = route['path'][-1]['id']
+            lastWayID = route['path'][-1].id
 
             # check if the end of the path is our destination
-            if lastWayID == end['id']:
+            if lastWayID == end.id:
                 return route
             
             # check if we have been to this way in a more optimal fashion before
@@ -58,20 +59,20 @@ class HighwayRouter():
             visited[lastWayID] = heuristic
 
             # iterate over all connecting highways to our current end way
-            for adjacent in self.getAdjacentHighways(route['path'][-1]):
+            for adjacent in self.hw.tree.getConnected(route['path'][-1]):
                 newRoute = route.copy()
 
                 # calculate heuristic for the new path
                 h = self.heuristic(newRoute, adjacent, elat, elon)
 
                 # if we have visited this way more optimally, skip it
-                if adjacent['id'] in visited and visited[adjacent['id']] <= h:
+                if adjacent.id in visited and visited[adjacent.id] <= h:
                     continue
 
                 # update the route to include the new road and length/time measures
                 newRoute['path'].append(adjacent)
-                newRoute['length_m'] += adjacent['length_mi']
-                newRoute['time_s'] += adjacent['time_s']
+                newRoute['length_m'] += adjacent.length
+                newRoute['time_s'] += adjacent.time
                 heapq.heappush(pq, (h, copy.deepcopy(newRoute)))
             
         return route
@@ -102,17 +103,17 @@ class HighwayRouter():
             visited[lastWayID] = heuristic
 
             # add map for current step to maps array
-            adjacents = self.getAdjacentHighways(route['path'][-1])
+            adjacents = self.hw.tree.getConnected(route['path'][-1])
             maps.append(self.mapper.mapAstarStep(route, adjacents))
 
             for adjacent in adjacents:
                 newRoute = route.copy()
                 h = self.heuristic(newRoute, adjacent, elat, elon)
-                if adjacent['id'] in visited and visited[adjacent['id']] <= h:
+                if adjacent.id in visited and visited[adjacent.id] <= h:
                     continue
                 newRoute['path'].append(adjacent)
-                newRoute['length_m'] += adjacent['length_mi']
-                newRoute['time_s'] += adjacent['time_s']
+                newRoute['length_m'] += adjacent.length
+                newRoute['time_s'] += adjacent.time
                 heapq.heappush(pq, (h, copy.deepcopy(newRoute)))
             
         return maps
@@ -121,11 +122,11 @@ class HighwayRouter():
     # this returns the distance traveled so far plus the Haversine distance remaining to the destination
     def heuristic(self, route, way, elat, elon):
         # distance traveled so far
-        lastNode = way['endNode']
-        h = self.hw.getDistance(elat, elon, lastNode['lat'], lastNode['long'])
+        lastNode = way.end
+        h = getDistance([elat, elon], [lastNode.lat, lastNode.lon])
 
         # Haversine distance remaining, which is an underestimation
-        g = route['length_m'] + way['length_mi']
+        g = route['length_m'] + way.length
         return g + h
 
     
@@ -151,3 +152,12 @@ class HighwayRouter():
                 adjacent.append(way)
 
         return adjacent
+
+
+def main():
+    hw = network()
+    router = HighwayRouter(hw, None)
+    print(router.route(42.293894, -84.275253, 42.271693, -84.847918))
+
+if __name__ == '__main__':
+    main()

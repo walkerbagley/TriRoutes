@@ -129,19 +129,6 @@ class QuadTree:
         self.ur = QuadTree(bbs[2])
         self.lr = QuadTree(bbs[3])
 
-        # sw = [self.bounds.center[0] - self.bounds.height / 2, self.bounds.center[1] - self.bounds.width / 2]
-        # ne = self.bounds.center
-        # self.ll = QuadTree(BoundingBox(sw, ne))
-        # sw[0] = self.bounds.center[0]
-        # ne[0] += self.bounds.height / 2
-        # self.ul = QuadTree(BoundingBox(sw, ne))
-        # sw = self.bounds.center
-        # ne[1] += self.bounds.width / 2
-        # self.ur = QuadTree(BoundingBox(sw, ne))
-        # sw[0] -= self.bounds.height / 2
-        # ne[0] = self.bounds.center[0]
-        # self.lr = QuadTree(BoundingBox(sw, ne))
-
         for w in self.ways:
             if self.ul.bounds.containsNode(w.start):
                 self.ul.add(w)
@@ -193,13 +180,13 @@ class QuadTree:
                 enlon = enode.lon
 
                 # distance from start coordinates to start node
-                dist1 = getDistance(lat, lon, snlat, snlon)
+                dist1 = getDistance([lat, lon], [snlat, snlon])
                 # distance from start coordinates to end node
-                dist2 = getDistance(lat, lon, enlat, enlon)
+                dist2 = getDistance([lat, lon], [enlat, enlon])
                 # distance from end coordinates to start node
-                snDist = getDistance(elat, elon, snlat, snlon)
+                snDist = getDistance([elat, elon], [snlat, snlon])
                 # distance from end coordinates to end node
-                enDist = getDistance(elat, elon, enlat, enlon)
+                enDist = getDistance([elat, elon], [enlat, enlon])
 
                 # if the distance to the start is better and the road gets us closer to our destination, use it
                 if dist1 < minDist and enDist < snDist:
@@ -237,13 +224,13 @@ class QuadTree:
                 enlon = enode.lon
 
                 # distance from start coordinates to start node
-                dist1 = getDistance(lat, lon, snlat, snlon)
+                dist1 = getDistance([lat, lon], [snlat, snlon])
                 # distance from start coordinates to end node
-                dist2 = getDistance(lat, lon, enlat, enlon)
+                dist2 = getDistance([lat, lon], [enlat, enlon])
                 # distance from end coordinates to start node
-                snDist = getDistance(elat, elon, snlat, snlon)
+                snDist = getDistance([elat, elon], [snlat, snlon])
                 # distance from end coordinates to end node
-                enDist = getDistance(elat, elon, enlat, enlon)
+                enDist = getDistance([elat, elon], [enlat, enlon])
 
                 # if the distance to the end is better and the road starts closer to the start than it ends, then use it
                 if enDist < minDist and dist1 < dist2:

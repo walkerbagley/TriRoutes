@@ -1,17 +1,16 @@
 #!/opt/homebrew/bin/python3
 
 import folium
-from hwnetwork import highways
-from highwayRouter import HighwayRouter
+from src.hwnetwork import network
+from src.highwayRouter import HighwayRouter
 
 # this mapper class contains all necessary mapping functions in order to make visualizing this project very easy
 class mapper():
 
     # create a highway network and a router
     def __init__(self):
-        self.hw = highways()
+        self.hw = network()
         self.router = HighwayRouter(self.hw, self)
-    
 
     # this maps all highways within a specific bounding box where s and e are pairs of coordinates
     def mapHighways(self, s, e):
@@ -56,17 +55,17 @@ class mapper():
         pts = [s, e]
 
         # get the end ways
-        endWays = self.hw.getEndWays(s[0], s[1], e[0], e[1])
-        startWay = endWays['startWay']
-        ssNode = startWay['startNode']
-        seNode = startWay['endNode']
-        endWay = endWays['endWay']
-        esNode = endWay['startNode']
-        eeNode = endWay['endNode']
+        endWays = self.hw.tree.getEndWays(s, e)
+        startWay = endWays['start']
+        ssNode = startWay.start
+        seNode = startWay.end
+        endWay = endWays['end']
+        esNode = endWay.start
+        eeNode = endWay.end
 
         # append coordinates
         for i in [ssNode, seNode, esNode, eeNode]:
-            pts.append([i['lat'], i['long']])
+            pts.append([i.lat, i.lon])
         
         # create map and add starting and ending ways to it
         m = folium.Map()
@@ -107,8 +106,8 @@ class mapper():
 
         # iterate over each way in the map, this might require querying the specific ways in the future in order to get the remaining points for more accurate lines on the map
         for way in route['path']:
-            sNode = [way['startNode']['lat'], way['startNode']['long']]
-            eNode = [way['endNode']['lat'], way['endNode']['long']]
+            sNode = [way.start.lat, way.start.lon]
+            eNode = [way.end.lat, way.end.lon]
             pts.append(sNode)
             pts.append(eNode)
 
@@ -166,18 +165,18 @@ class mapper():
     # this function returns a string with the required identifying information
     def popupInfo(self, way):
         # grab the ref of the way
-        name = way['tags']['ref'] + ', ' if 'ref' in way['tags'] else ''
+        name = way.tags['ref'] + ', ' if 'ref' in way.tags else ''
 
         # get the way's ID
-        i = str(way['id'])
+        i = str(way.id)
 
-        sNode = way['startNode']
-        eNode = way['endNode']
+        sNode = way.start
+        eNode = way.end
 
         # get direction of the way so we can tell which way we are supposed to be driving
-        dirNS = ', N' if sNode['lat'] < eNode['lat'] else ', S'
-        dirEW = 'E' if sNode['long'] < eNode['long'] else 'W'
+        dirNS = ', N' if sNode.lat < eNode.lat else ', S'
+        dirEW = 'E' if sNode.lon < eNode.lon else 'W'
 
         # get length
-        length = ', ' + str(way['length_mi'])
+        length = ', ' + str(way.length)
         return name + i + dirNS + dirEW + length
