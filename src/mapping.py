@@ -82,6 +82,27 @@ class mapper():
         m.fit_bounds([[min(lats), min(lons)], [max(lats), max(lons)]])
         return m
 
+    def mapEndWaySearch(self, s, e, f = 'start'):
+        way, _, boxes, ways = self.hw.tree.getClosestWayMap(s, e, f)
+
+
+        m = folium.Map()
+        folium.PolyLine([[way.start.lat, way.start.lon], [way.end.lat, way.end.lon]], weight=5, opacity=1, popup=self.popupInfo(way)).add_to(m)
+
+        mark = s if f == 'start' else e
+        folium.Marker(location=mark).add_to(m)
+
+        for i, box in enumerate(boxes):
+            sw = [box.center[0] - box.height / 2, box.center[1] - box.width / 2]
+            se = [box.center[0] - box.height / 2, box.center[1] + box.width / 2]
+            ne = [box.center[0] + box.height / 2, box.center[1] + box.width / 2]
+            nw = [box.center[0] + box.height / 2, box.center[1] - box.width / 2]
+            folium.Polygon([sw, se, ne, nw], opacity=0.3, popup=f'{i}').add_to(m)
+        
+        for i, w in enumerate(ways):
+            folium.PolyLine([[w.start.lat, w.start.lon], [w.end.lat, w.end.lon]], weight=5, opacity=1, popup=f'{i}, ' + self.popupInfo(w)).add_to(m)
+        
+        return m
 
     # this function returns a map of the route from a pair of starting coordinates s and ending coordinates e
     def mapRoute(self, s, e):

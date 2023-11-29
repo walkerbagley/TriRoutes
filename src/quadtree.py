@@ -89,7 +89,11 @@ class QuadTree:
         return s + w + d  
 
     def add(self, way: Way) -> None:
-        if not self.bounds.containsNode(way.start):
+        self._add(way, way.start)
+        self._add(way, way.end)
+
+    def _add(self, way: Way, node: Node) -> None:
+        if not self.bounds.containsNode(node):
             return
 
         if not self.ul and len(self.ways) < self.MAX_WAYS:
@@ -100,14 +104,14 @@ class QuadTree:
             if not self.ul:
                 self.__divide()
             
-            if self.ul.bounds.containsNode(way.start):
-                self.ul.add(way)
-            elif self.ur.bounds.containsNode(way.start):
-                self.ur.add(way)
-            elif self.ll.bounds.containsNode(way.start):
-                self.ll.add(way)
-            elif self.lr.bounds.containsNode(way.start):
-                self.lr.add(way)
+            if self.ul.bounds.containsNode(node):
+                self.ul._add(way, node)
+            elif self.ur.bounds.containsNode(node):
+                self.ur._add(way, node)
+            elif self.ll.bounds.containsNode(node):
+                self.ll._add(way, node)
+            elif self.lr.bounds.containsNode(node):
+                self.lr._add(way, node)
             
             self.size += 1
     
@@ -130,14 +134,22 @@ class QuadTree:
         self.lr = QuadTree(bbs[3])
 
         for w in self.ways:
-            if self.ul.bounds.containsNode(w.start):
-                self.ul.add(w)
-            elif self.ur.bounds.containsNode(w.start):
-                self.ur.add(w)
-            elif self.ll.bounds.containsNode(w.start):
-                self.ll.add(w)
-            elif self.lr.bounds.containsNode(w.start):
-                self.lr.add(w)
+            nodes = []
+            if self.bounds.containsNode(w.start):
+                nodes.append(w.start)
+            if self.bounds.containsNode(w.end):
+                nodes.append(w.end)
+            
+            for node in nodes:
+                if self.ul.bounds.containsNode(node) and w not in self.ul.ways:
+                    self.ul._add(w, node)
+                elif self.ur.bounds.containsNode(node) and w not in self.ur.ways:
+                    self.ur._add(w, node)
+                elif self.ll.bounds.containsNode(node) and w not in self.ll.ways:
+                    self.ll._add(w, node)
+                elif self.lr.bounds.containsNode(node) and w not in self.lr.ways:
+                    self.lr._add(w, node)
+
         self.ways = []
 
     def getConnected(self, way: Way) -> list:
@@ -160,16 +172,19 @@ class QuadTree:
     
 
     def getEndWays(self, start: list, end: list) -> dict:
-        return {'start': self.getStartWay(start, end), 'end': self.getEndWay(start, end)}
+        return {'start': self.getClosestWay(start, end)[0], 'end': self.getClosestWay(start, end, f='end')[0]}
 
-    def getStartWay(self, start: list, end: list) -> Way:
-        node = {'id': -1, 'lat': start[0], 'long': start[1]}
-        node = Node(node)
+    def getClosestWay(self, start: list, end: list, visited = set(), f = 'start') -> Way:
+        # check if quadtree has been visited already
+        minDist = inf
+        w = None
+        # if self in visited:
+        #     return w, minDist
+        
+        # if not, check current quadtree
+        visited.add(self)
+
         if not self.ul:
-            lat, lon = start
-            elat, elon = end
-            minDist = inf
-            w = None
             for way in self.ways:
                 snode = way.start
                 snlat = snode.lat
@@ -180,40 +195,166 @@ class QuadTree:
                 enlon = enode.lon
 
                 # distance from start coordinates to start node
-                dist1 = getDistance([lat, lon], [snlat, snlon])
+                dist1 = getDistance(start, [snlat, snlon])
                 # distance from start coordinates to end node
-                dist2 = getDistance([lat, lon], [enlat, enlon])
+                dist2 = getDistance(start, [enlat, enlon])
                 # distance from end coordinates to start node
-                snDist = getDistance([elat, elon], [snlat, snlon])
+                snDist = getDistance(end, [snlat, snlon])
                 # distance from end coordinates to end node
-                enDist = getDistance([elat, elon], [enlat, enlon])
+                enDist = getDistance(end, [enlat, enlon])
 
                 # if the distance to the start is better and the road gets us closer to our destination, use it
-                if dist1 < minDist and enDist < snDist:
-                    minDist = dist1
-                    w = way
+                if f == 'start':
+                    if dist1 < minDist and enDist < snDist:
+                        minDist = dist1
+                        w = way
+                else:
+                    if enDist < minDist and dist1 < dist2:
+                        minDist = enDist
+                        w = way
             
-            return w
+            return w, minDist
         
+        # search the child quadtree containing the start coordinates
         else:
-            if self.ul.bounds.containsNode(node):
-                return self.ul.getStartWay(start, end)
-            elif self.ur.bounds.containsNode(node):
-                return self.ur.getStartWay(start, end)
-            elif self.ll.bounds.containsNode(node):
-                return self.ll.getStartWay(start, end)
-            elif self.lr.bounds.containsNode(node):
-                return self.lr.getStartWay(start, end)
+            node = Node({'id': -1, 'lat': start[0], 'long': start[1]}) if f == 'start' else Node({'id': -1, 'lat': end[0], 'long': end[1]})
+            newMin = inf
+
+            nearestChild = self.closestChild(node)
+            newW, newMin = nearestChild.getClosestWay(start, end, visited, f)
+
+            # if self.ul.bounds.containsNode(node):
+            #     newW, newMin = self.ul.getClosestWay(start, end, visited, f)
+            # elif self.ur.bounds.containsNode(node):
+            #     newW, newMin = self.ur.getClosestWay(start, end, visited, f)
+            # elif self.ll.bounds.containsNode(node):
+            #     newW, newMin = self.ll.getClosestWay(start, end, visited, f)
+            # elif self.lr.bounds.containsNode(node):
+            #     newW, newMin = self.lr.getClosestWay(start, end, visited, f)
+
+            if newMin < minDist:
+                minDist, w = newMin, newW
+        
+            # search neighboring quadtrees if their bounds are closer than the distance to the current best way
+
+            # dlat and dlon give distance directly to the latitudinal and longitudinal axes of the current quadtree
+            dlat = getDistance([self.bounds.center[0], start[1]], start) if f == 'start' else getDistance([self.bounds.center[0], end[1]], end)
+            dlon = getDistance([start[0], self.bounds.center[1]], start) if f == 'start' else getDistance([end[0], self.bounds.center[1]], end)
+
+            # latdir and londir specify which quadrant we just searched
+            #     londir
+            #  1, -1 |  1, 1
+            # -------------- latdir
+            # -1, -1 | -1, 1
+            if f == 'start':
+                latdir = 1 if start[0] >= self.bounds.center[0] else -1
+                londir = 1 if start[1] >= self.bounds.center[1] else -1
+            else:
+                latdir = 1 if end[0] >= self.bounds.center[0] else -1
+                londir = 1 if end[1] >= self.bounds.center[1] else -1
+
+            # ABOVE/BELOW
+            # if the distance to latitudinal axis < distance to best way, check quadrant above/below the one just searched and compare to current best way
+            if abs(dlat) < minDist:
+                if latdir == 1:
+                    if londir == 1:
+                        newW, newMin = self.lr.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.ll.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if londir == 1:
+                        newW, newMin = self.ur.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.ul.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+            
+            # LEFT/RIGHT
+            # if the distance to longitudinal axis < distance to best way, check quadrant left/right the one just searched and compare to current best way
+            if abs(dlon) < minDist:
+                if londir == 1:
+                    if latdir == 1:
+                        newW, newMin = self.ul.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.ll.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if latdir == 1:
+                        newW, newMin = self.ur.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.lr.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+            
+            # DIAGONAL
+            # if the distance to center < distance to best way, check quadrant diagonal the one just searched and compare to current best way
+            if sqrt(abs(dlat)**2 + abs(dlon)**2) < minDist:
+                if londir == 1:
+                    if latdir == 1:
+                        newW, newMin = self.ll.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.ul.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if latdir == 1:
+                        newW, newMin = self.lr.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin = self.ur.getClosestWay(start, end, visited, f=f)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+        
+        return w, minDist
 
 
-    def getEndWay(self, start: list, end: list) -> Way:
-        node = {'id': -1, 'lat': end[0], 'long': end[1]}
-        node = Node(node)
+    def closestChild(self, node: Node):
         if not self.ul:
-            lat, lon = start
-            elat, elon = end
-            minDist = inf
-            w = None
+            return None
+        elif self.ul.bounds.containsNode(node):
+            return self.ul
+        elif self.ur.bounds.containsNode(node):
+            return self.ur
+        elif self.ll.bounds.containsNode(node):
+            return self.ll
+        elif self.lr.bounds.containsNode(node):
+            return self.lr
+        else:
+            dUL = getDistance([node.lat, node.lon], self.ul.bounds.center)
+            dUR = getDistance([node.lat, node.lon], self.ur.bounds.center)
+            dLL = getDistance([node.lat, node.lon], self.ll.bounds.center)
+            dLR = getDistance([node.lat, node.lon], self.ul.bounds.center)
+            best = min(dUL, dUR, dLL, dLR)
+            if best == dUL:
+                return self.ul
+            elif best == dUR:
+                return self.ur
+            elif best == dLL:
+                return self.ll
+            else:
+                return self.lr
+    
+    def getClosestWayMap(self, start: list, end: list, f = 'start', boxes = [], ways = []) -> Way:
+        # check if quadtree has been visited already
+        minDist = inf
+        w = None
+        boxes.append(self.bounds)
+
+        if not self.ul:
             for way in self.ways:
                 snode = way.start
                 snlat = snode.lat
@@ -224,27 +365,130 @@ class QuadTree:
                 enlon = enode.lon
 
                 # distance from start coordinates to start node
-                dist1 = getDistance([lat, lon], [snlat, snlon])
+                dist1 = getDistance(start, [snlat, snlon])
                 # distance from start coordinates to end node
-                dist2 = getDistance([lat, lon], [enlat, enlon])
+                dist2 = getDistance(start, [enlat, enlon])
                 # distance from end coordinates to start node
-                snDist = getDistance([elat, elon], [snlat, snlon])
+                snDist = getDistance(end, [snlat, snlon])
                 # distance from end coordinates to end node
-                enDist = getDistance([elat, elon], [enlat, enlon])
+                enDist = getDistance(end, [enlat, enlon])
 
-                # if the distance to the end is better and the road starts closer to the start than it ends, then use it
-                if enDist < minDist and dist1 < dist2:
-                    minDist = enDist
-                    w = way
+                # if the distance to the start is better and the road gets us closer to our destination, use it
+                if f == 'start':
+                    if dist1 < minDist and enDist < snDist:
+                        minDist = dist1
+                        w = way
+                else:
+                    if enDist < minDist and enDist < snDist:
+                        minDist = enDist
+                        w = way
             
-            return w
+            if w:
+                ways.append(w)
+            return w, minDist, boxes, ways
         
+        # search the child quadtree containing the start coordinates
         else:
-            if self.ul.bounds.containsNode(node):
-                return self.ul.getEndWay(start, end)
-            elif self.ur.bounds.containsNode(node):
-                return self.ur.getEndWay(start, end)
-            elif self.ll.bounds.containsNode(node):
-                return self.ll.getEndWay(start, end)
-            elif self.lr.bounds.containsNode(node):
-                return self.lr.getEndWay(start, end)
+            node = Node({'id': -1, 'lat': start[0], 'long': start[1]}) if f == 'start' else Node({'id': -1, 'lat': end[0], 'long': end[1]})
+            newMin = inf
+
+            nearestChild = self.closestChild(node)
+            newW, newMin, boxes, ways = nearestChild.getClosestWayMap(start, end, f, boxes)
+
+            # if self.ul.bounds.containsNode(node):
+            #     newW, newMin = self.ul.getClosestWay(start, end, visited, f)
+            # elif self.ur.bounds.containsNode(node):
+            #     newW, newMin = self.ur.getClosestWay(start, end, visited, f)
+            # elif self.ll.bounds.containsNode(node):
+            #     newW, newMin = self.ll.getClosestWay(start, end, visited, f)
+            # elif self.lr.bounds.containsNode(node):
+            #     newW, newMin = self.lr.getClosestWay(start, end, visited, f)
+
+            if newMin < minDist:
+                minDist, w = newMin, newW
+        
+            # search neighboring quadtrees if their bounds are closer than the distance to the current best way
+
+            # dlat and dlon give distance directly to the latitudinal and longitudinal axes of the current quadtree
+            dlat = getDistance([self.bounds.center[0], start[1]], start) if f == 'start' else getDistance([self.bounds.center[0], end[1]], end)
+            dlon = getDistance([start[0], self.bounds.center[1]], start) if f == 'start' else getDistance([end[0], self.bounds.center[1]], end)
+
+            # latdir and londir specify which quadrant we just searched
+            #     londir
+            #  1, -1 |  1, 1
+            # -------------- latdir
+            # -1, -1 | -1, 1
+            if f == 'start':
+                latdir = 1 if start[0] >= self.bounds.center[0] else -1
+                londir = 1 if start[1] >= self.bounds.center[1] else -1
+            else:
+                latdir = 1 if end[0] >= self.bounds.center[0] else -1
+                londir = 1 if end[1] >= self.bounds.center[1] else -1
+
+            # ABOVE/BELOW
+            # if the distance to latitudinal axis < distance to best way, check quadrant above/below the one just searched and compare to current best way
+            if abs(dlat) < minDist:
+                if latdir == 1:
+                    if londir == 1:
+                        newW, newMin, boxes, ways = self.lr.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.ll.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if londir == 1:
+                        newW, newMin, boxes, ways = self.ur.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.ul.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+            
+            # LEFT/RIGHT
+            # if the distance to longitudinal axis < distance to best way, check quadrant left/right the one just searched and compare to current best way
+            if abs(dlon) < minDist:
+                if londir == 1:
+                    if latdir == 1:
+                        newW, newMin, boxes, ways = self.ul.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.ll.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if latdir == 1:
+                        newW, newMin, boxes, ways = self.ur.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.lr.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+            
+            # DIAGONAL
+            # if the distance to center < distance to best way, check quadrant diagonal the one just searched and compare to current best way
+            if sqrt(abs(dlat)**2 + abs(dlon)**2) < minDist:
+                if londir == 1:
+                    if latdir == 1:
+                        newW, newMin, boxes, ways = self.ll.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.ul.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                else:
+                    if latdir == 1:
+                        newW, newMin, boxes, ways = self.lr.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+                    else:
+                        newW, newMin, boxes, ways = self.ur.getClosestWayMap(start, end, f, boxes, ways)
+                        if newMin < minDist:
+                            minDist, w = newMin, newW
+        
+        return w, minDist, boxes, ways

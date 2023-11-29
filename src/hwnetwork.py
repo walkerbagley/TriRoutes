@@ -10,6 +10,7 @@ class network():
 
     # get all ways from the json folder of this project
     def __init__(self):
+        # sys.setrecursionlimit(1000000)
         bounds = quadtree.BoundingBox([24.164785, -127.826991], [49.726580, -65.641307])
         self.tree = quadtree.QuadTree(bounds)
 
@@ -22,12 +23,18 @@ class network():
         for fileName in os.listdir('json/'):
             with open(f'json/{fileName}', 'r') as file:
                 temp = json.load(file)
-                for way in temp.values():
-                    
+                for i, way in enumerate(temp.values()):
+                    # if i > 5:
+                    #     break
                     self.tree.add(quadtree.Way(way))
-                    if 'oneway' not in way['tags'] or way['tags']['oneway'] != 'yes':
-                        way['startNode'], way['endNode'] = way['endNode'], way['startNode']
-                        self.tree.add(quadtree.Way(way))
+
+                    # if 'oneway' not in way['tags'] or way['tags']['oneway'] != 'yes':
+                    #     way['startNode'], way['endNode'] = way['endNode'], way['startNode']
+                    #     self.tree.add(quadtree.Way(way))
+        
+        # with open('json/road_tiles_12', 'r') as file:
+        #     temp = json.load(file)
+        #     for way in 
 
 
 def main():
