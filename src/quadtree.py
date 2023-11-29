@@ -159,6 +159,10 @@ class QuadTree:
             for w in self.ways:
                 if w.start.id == node.id:
                     connected.append(w)
+                elif w.end.id == node.id and not w.oneway:
+                    reverse = deepcopy(w)
+                    reverse.start, reverse.end = reverse.end, reverse.start
+                    connected.append(reverse)
             return connected
         else:
             if self.ul.bounds.containsNode(node):

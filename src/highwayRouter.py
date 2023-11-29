@@ -38,13 +38,13 @@ class HighwayRouter():
         # start off with a route only containing the starting way and add it to our priority queue
         route = {'length_m': 0, 'time_s': 0, 'path': [start]}
         tempNode = start.start
-        pq = [(getDistance([tempNode.lat, tempNode.lon], [elat, elon]), route)]
+        pq = [(getDistance([tempNode.lat, tempNode.lon], [elat, elon]), 1, route)]
 
         # main loop of A*, keep popping from the priority queue until we reach the destination way or run out of paths
         while (pq):
 
             # pop the best route available from the priority queue
-            heuristic, route = heapq.heappop(pq)
+            heuristic, _, route = heapq.heappop(pq)
             lastWayID = route['path'][-1].id
 
             # check if the end of the path is our destination
@@ -73,7 +73,8 @@ class HighwayRouter():
                 newRoute['path'].append(adjacent)
                 newRoute['length_m'] += adjacent.length
                 newRoute['time_s'] += adjacent.time
-                heapq.heappush(pq, (h, copy.deepcopy(newRoute)))
+                # print((h, len(newRoute['path']), newRoute))
+                heapq.heappush(pq, (h, len(newRoute['path']), copy.deepcopy(newRoute)))
             
         return route
     
