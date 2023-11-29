@@ -7,8 +7,10 @@ import copy
 
 # this class serves as the main form of routing over the highway network we create in hwnetwork.py
 class HighwayRouter():
+
     # setup the router with a highway network and a mapper
     def __init__(self, hw, mapper):
+        self.threshold = 5000
         self.hw = hw
         self.mapper = mapper
     
@@ -32,6 +34,8 @@ class HighwayRouter():
     # takes a pair of start and end ways, and the desired destination coordinates
     def routeAstar(self, start, end, elat, elon):
 
+        count = 0
+
         # visited dictionary keeps track of the best heuristic it takes to reach each way that has been visited
         visited = {}
 
@@ -41,14 +45,16 @@ class HighwayRouter():
         pq = [(getDistance([tempNode.lat, tempNode.lon], [elat, elon]), 1, route)]
 
         # main loop of A*, keep popping from the priority queue until we reach the destination way or run out of paths
-        while (pq):
+        while pq and count < self.threshold:
 
             # pop the best route available from the priority queue
             heuristic, _, route = heapq.heappop(pq)
             lastWayID = route['path'][-1].id
+            count += 1
 
             # check if the end of the path is our destination
             if lastWayID == end.id:
+                print(f'Roads searched: {count}')
                 return route
             
             # check if we have been to this way in a more optimal fashion before
@@ -59,7 +65,13 @@ class HighwayRouter():
             visited[lastWayID] = heuristic
 
             # iterate over all connecting highways to our current end way
-            for adjacent in self.hw.tree.getConnected(route['path'][-1]):
+            adjacents = self.hw.tree.getConnected(route['path'][-1])
+
+            # for some reason adjacents can end up being none?
+            if not adjacents:
+                continue
+
+            for adjacent in adjacents:
                 newRoute = route.copy()
 
                 # calculate heuristic for the new path
@@ -75,7 +87,8 @@ class HighwayRouter():
                 newRoute['time_s'] += adjacent.time
                 # print((h, len(newRoute['path']), newRoute))
                 heapq.heappush(pq, (h, len(newRoute['path']), copy.deepcopy(newRoute)))
-            
+        
+        print(f'Roads searched: {count}')
         return route
     
 

@@ -163,6 +163,8 @@ class QuadTree:
                     reverse = deepcopy(w)
                     reverse.start, reverse.end = reverse.end, reverse.start
                     connected.append(reverse)
+            if not connected:
+                return []
             return connected
         else:
             if self.ul.bounds.containsNode(node):
