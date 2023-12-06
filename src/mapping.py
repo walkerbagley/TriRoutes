@@ -1,6 +1,7 @@
 #!/opt/homebrew/bin/python3
 
 import folium
+import time
 from src.hwnetwork import network
 from src.highwayRouter import HighwayRouter
 
@@ -8,9 +9,9 @@ from src.highwayRouter import HighwayRouter
 class mapper():
 
     # create a highway network and a router
-    def __init__(self):
+    def __init__(self, threshold=5000):
         self.hw = network()
-        self.router = HighwayRouter(self.hw, self)
+        self.router = HighwayRouter(self.hw, self, threshold)
 
     # this maps all highways within a specific bounding box where s and e are pairs of coordinates
     def mapHighways(self, s, e):
@@ -22,7 +23,7 @@ class mapper():
         # get all ways in our network where the start is contained in our bounding box
         ways = []
         for way in self.hw.ways.values():
-            start = way['startNode']
+            start = way.start
             if (start['lat'] > slat and start['lat'] < elat) and (start['long'] > slon and start['long'] < elon):
                 ways.append(way)
         
@@ -112,9 +113,12 @@ class mapper():
         elon = e[1]
 
         # get the route from the router
+        duration = time.time()
         route = self.router.route(slat, slon, elat, elon)
+        duration = time.time() - duration
 
         # print out the distance of the route and time in hours and minutes
+        print(f'Search Time: {duration:.5f} s\n')
         dist = route['length_m']
         print(f'Expected Distance {dist:.2f} miles')
         time_m = int(route['time_s'] / 60)
@@ -157,11 +161,11 @@ class mapper():
         for way in route['path']:
             # set a different color for the last way since this is the one we are looking at
             color = 'blue'
-            if way['id'] == route['path'][-1]['id']:
+            if way.id == route['path'][-1].id:
                 color = 'pink'
             
-            sNode = [way['startNode']['lat'], way['startNode']['long']]
-            eNode = [way['endNode']['lat'], way['endNode']['long']]
+            sNode = [way.start.lat, way.start.lon]
+            eNode = [way.end.lat, way.end.lon]
             pts.append(sNode)
             pts.append(eNode)
 
@@ -169,8 +173,8 @@ class mapper():
 
         # iterate over all connecting ways and use a new color since they are being added to the priority queue
         for way in adjacent:
-            sNode = [way['startNode']['lat'], way['startNode']['long']]
-            eNode = [way['endNode']['lat'], way['endNode']['long']]
+            sNode = [way.start.lat, way.start.lon]
+            eNode = [way.end.lat, way.end.lon]
             pts.append(sNode)
             pts.append(eNode)
 

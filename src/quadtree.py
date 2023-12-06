@@ -90,7 +90,7 @@ class QuadTree:
 
     def add(self, way: Way) -> None:
         self._add(way, way.start)
-        self._add(way, way.end)
+        # self._add(way, way.end)
 
     def _add(self, way: Way, node: Node) -> None:
         if not self.bounds.containsNode(node):
