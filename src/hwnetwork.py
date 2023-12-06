@@ -20,8 +20,8 @@ class network():
         #         for way in temp:
         #             print(way)
 
-        for fileName in os.listdir('new_json/'):
-            with open(f'new_json/{fileName}', 'r') as file:
+        for fileName in os.listdir('json/'):
+            with open(f'json/{fileName}', 'r') as file:
                 temp = json.load(file)
                 for val in temp.values():
                     for i, way in enumerate(val.values()):

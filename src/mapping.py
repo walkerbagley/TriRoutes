@@ -13,6 +13,7 @@ class mapper():
         self.hw = network()
         self.router = HighwayRouter(self.hw, self, threshold)
 
+    # DEPRECATED
     # this maps all highways within a specific bounding box where s and e are pairs of coordinates
     def mapHighways(self, s, e):
         slat = s[0]
