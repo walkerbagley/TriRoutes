@@ -67,8 +67,15 @@ class HighwayRouter():
             adjacents = self.hw.tree.getConnected(route['path'][-1])
 
             # for some reason adjacents can end up being none?
+            validTypes = ['motorway', 'primary', 'motorway_link']
+            if not adjacents and 'highway' in route['path'][-1].tags and route['path'][-1].tags['highway'] in validTypes:
+            # if not adjacents:
+                # print(route['path'][-1].tags['highway'])
+                self.hw.tree.queryNeighborRoads(route['path'][-1].end)
+                adjacents = self.hw.tree.getConnected(route['path'][-1])
+            
             if not adjacents:
-                continue
+                adjacents = []
 
             for adjacent in adjacents:
                 newRoute = route.copy()
@@ -100,13 +107,15 @@ class HighwayRouter():
 
     # this works the exact same as the normal algorithm, just saving a map for each step of the algorithm
     def AstarMaps(self, start, end):
+        count = 0
         maps = []
         visited = {}
         route = {'length_m': 0, 'time_s': 0, 'path': [start]}
         pq = [(getDistance([start.start.lat, start.start.lon], [end.end.lat, end.end.lon]), 1, route)]
-        while (pq):
+        while pq and count < self.threshold:
             heuristic, _, route = heapq.heappop(pq)
             lastWayID = route['path'][-1].id
+            count += 1
             if lastWayID == end.id:
                 return maps
             if lastWayID in visited and visited[lastWayID] <= heuristic:

@@ -20,21 +20,14 @@ class network():
         #         for way in temp:
         #             print(way)
 
-        for fileName in os.listdir('json/'):
-            with open(f'json/{fileName}', 'r') as file:
+        for fileName in os.listdir('new_json/'):
+            with open(f'new_json/{fileName}', 'r') as file:
                 temp = json.load(file)
-                for i, way in enumerate(temp.values()):
-                    # if i > 5:
-                    #     break
-                    self.tree.add(quadtree.Way(way))
-
-                    # if 'oneway' not in way['tags'] or way['tags']['oneway'] != 'yes':
-                    #     way['startNode'], way['endNode'] = way['endNode'], way['startNode']
-                    #     self.tree.add(quadtree.Way(way))
-        
-        # with open('json/road_tiles_12', 'r') as file:
-        #     temp = json.load(file)
-        #     for way in 
+                for val in temp.values():
+                    for i, way in enumerate(val.values()):
+                        # if i > 5:
+                        #     break
+                        self.tree.add(quadtree.Way(way))
 
 
 def main():

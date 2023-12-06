@@ -140,6 +140,8 @@ class mapper():
             folium.PolyLine([sNode, eNode], weight=5, opacity=1, popup=self.popupInfo(way)).add_to(m)
 
         # add start/end pins
+        pts.append([slat, slon])
+        pts.append([elat, elon])
         folium.Marker(location = [slat, slon], popup = f'Start, lat: {slat}\nlon: {slon}').add_to(m)
         folium.Marker(location = [elat, elon], popup = f'End, lat: {elat}\nlon: {elon}').add_to(m)
 

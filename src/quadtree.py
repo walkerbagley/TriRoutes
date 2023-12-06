@@ -2,6 +2,10 @@
 
 from math import radians, sin, cos, asin, sqrt, inf
 from copy import deepcopy
+import time
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from scripts import overpy
 
 
 # returns the distance between two sets of coordinates
@@ -90,13 +94,15 @@ class QuadTree:
 
     def add(self, way: Way) -> None:
         self._add(way, way.start)
-        # self._add(way, way.end)
+        self._add(way, way.end)
 
     def _add(self, way: Way, node: Node) -> None:
         if not self.bounds.containsNode(node):
             return
 
         if not self.ul and len(self.ways) < self.MAX_WAYS:
+            if way in self.ways:
+                return
             self.size += 1
             self.ways.append(way)  
         
@@ -157,6 +163,8 @@ class QuadTree:
         node = way.end
         if not self.ul:
             for w in self.ways:
+                if w.id == way.id:
+                    continue
                 if w.start.id == node.id:
                     connected.append(w)
                 elif w.end.id == node.id and not w.oneway:
@@ -498,3 +506,54 @@ class QuadTree:
                             minDist, w = newMin, newW
         
         return w, minDist, boxes, ways
+    
+    def queryNeighborRoads(self, node) -> None:
+        keepTags = ['highway', 'lanes', 'maxspeed', 'name', 'oneway', 'ref', 'surface']
+        api = overpy.Overpass()
+        querybox = f"""
+            [out:json][timeout:600];
+            node(id:{node.id});
+            way(bn)->.w;
+            way(bn);
+            convert length 'length'=length(),::id=id(),'type'='length';
+            out;
+            .w out;
+            node(w.w);
+            out;
+            convert road ::=::,::geom=geom(),'length'=length(),::id=id(),'type'=type();
+        """
+    
+        result = None
+        while result == None:
+            try:
+                result = api.query(querybox)
+            except:
+                time.sleep(0.5)
+        
+        # print(f'Query on node {node.id}: {len(result._lengths.values())} roads found')
+
+        for length in result._lengths.values():
+
+            # get the corresponding way for a particular id and eliminate unnecessary tag elements
+            way = result.get_way(length.id)
+            tags = {tag: val for tag, val in way.tags.items() if tag in keepTags}
+
+            # do mileage and time calculations based on the road length and max speed
+            length_miles = float(length.length) * 0.000621371
+            speed = 45
+            if 'maxspeed' in tags:
+                try:
+                    speed = int(tags['maxspeed'].split(' ')[0])
+                except:
+                    speed = 45
+            time_seconds = (length_miles / speed) * 3600
+
+            # get start and end node for each road and create new dictionaries for the endpoints
+            start = way.nodes[0]
+            end = way.nodes[-1]
+            startNode = {'id': start.id, 'lat': float(start.lat), 'long': float(start.lon)}
+            endNode = {'id': end.id, 'lat': float(end.lat), 'long': float(end.lon)}
+
+            # create road dictionary and add to ways list
+            wayData = {'id': length.id, 'length_mi': length_miles, 'time_s': time_seconds, 'tags': tags, 'startNode': startNode, 'endNode': endNode}
+            self.add(Way(wayData))
