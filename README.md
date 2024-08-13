@@ -10,7 +10,7 @@ The biggest pivot was that I did not end up having time to implement the end por
 
 An example of the quadtree search for a starting road:
 
-IMAGE
+<img src="./images/quadtree_search.png" alt="quadtree search" width="500"/>
 
 ## Status
 As it stands, there is still a lot I’d like to do with this project in the future, though it has a reasonable routing library and appropriate matching mapping functionality for easy testing and examples of what my project can do. I wrote a new quadtree structure for my highway network that increased search times significantly, however I should note that when testing, I would advise against trying really long routes as they will still take a while. I added a search threshold so that a user can specify how many nodes they’d like to search before my algorithm times out so to speak, which would make it easier to test and view on a smaller and more reasonable scale. When I realized I was lacking some necessary data, I rewrote my entire query script to be multithreaded which took significant time. The router seems to perform very well when there is a clear path to the destination or when the distance from start to end is not too great.
@@ -24,15 +24,15 @@ See the photos below for some examples of what my project is capable of.
 
 Sample highway route:
 
-IMAGE
+<img src="./images/sample_route.png" alt="sample route" width="500"/>
 
 Sample step of A* algorithm on long route:
 
-IMAGE
+<img src="./images/astar_step.png" alt="A* step" width="500"/>
 
 Another example route, this time a little questionable:
 
-IMAGE
+<img src="./images/bad_route.png" alt="bad route" width="500"/>
 
 ## Reflection
 Overall, I am proud of what I was able to accomplish in this project given the difficulty of such a task and the constraints of an undergraduate computer science student. I tackled a number of intensive problems surrounding APIs, mapping, search algorithms, data structures and data engineering. I learned a ton throughout this project and was constantly searching and considering ways I could improve upon it, even when I was not physically coding in my repository. I would say overall this project was a huge success even though I am far from a final state akin to what I set out to accomplish from the get go. I thoroughly enjoyed putting in an absurd amount of hours and hard work into this project and I genuinely hope to continue working on it after this course concludes because I have a lot of ideas I’d still like to get to and eventually make an interactive web application to go with it. That being said, I am a little sad I wasn’t able to get this to a super functional state, but I am also very grateful for the challenges it presented me along the way.
